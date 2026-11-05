@@ -37,3 +37,6 @@ target.jpg
 *.pdb
 *.dll
 *.csta
+
+# 程序包不在仓库中——统一发布到 Releases 附件
+dist/
