@@ -21,9 +21,9 @@ internal sealed class PasswordDialog : Form
     {
         Text = mode switch
         {
-            Mode.Create => "设置密码",
-            Mode.Verify => "身份验证",
-            _ => "修改密码",
+            Mode.Create => "FaceLock - 设置密码",
+            Mode.Verify => "FaceLock - 身份验证",
+            _ => "FaceLock - 修改密码",
         };
         FormBorderStyle = FormBorderStyle.FixedDialog;
         MaximizeBox = false;

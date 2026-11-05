@@ -8,14 +8,14 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <ApplicationIcon>tray.ico</ApplicationIcon>
-    <AssemblyName>face</AssemblyName>
-    <RootNamespace>face</RootNamespace>
-    <Version>1.5.0</Version>
-    <AssemblyVersion>1.5.0.0</AssemblyVersion>
-    <FileVersion>1.5.0.0</FileVersion>
-    <Company>face</Company>
-    <Product>face</Product>
-    <AssemblyTitle>face</AssemblyTitle>
+    <AssemblyName>FaceLock</AssemblyName>
+    <RootNamespace>FaceLock</RootNamespace>
+    <Version>1.6.0</Version>
+    <AssemblyVersion>1.6.0.0</AssemblyVersion>
+    <FileVersion>1.6.0.0</FileVersion>
+    <Company>FaceLock</Company>
+    <Product>FaceLock</Product>
+    <AssemblyTitle>FaceLock</AssemblyTitle>
     <!-- 构建路径中性化：PDB/调试信息中不出现本机目录 -->
     <PathMap>D:\aiface=C:\src</PathMap>
   </PropertyGroup>

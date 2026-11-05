@@ -9,13 +9,13 @@ internal static class Program
     {
         // 单实例：防止重复启动导致摄像头争用（TESTMODE 测试构建使用独立命名，便于并行验证）
 #if TESTMODE
-        using var mutex = new Mutex(true, "face-tray-lockscreen-testmode", out bool isNew);
+        using var mutex = new Mutex(true, "FaceLock-testmode", out bool isNew);
 #else
-        using var mutex = new Mutex(true, "face-tray-lockscreen-single-instance", out bool isNew);
+        using var mutex = new Mutex(true, "FaceLock-single-instance", out bool isNew);
 #endif
         if (!isNew)
         {
-            MessageBox.Show("程序已在运行中，请查看任务栏托盘图标。", "人脸比对锁屏",
+            MessageBox.Show("程序已在运行中，请查看任务栏托盘图标。", "FaceLock 人脸锁",
                 MessageBoxButtons.OK, MessageBoxIcon.Information);
             return;
         }

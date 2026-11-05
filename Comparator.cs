@@ -16,7 +16,7 @@ internal sealed class Comparator
     private const int WarmupFrames = 2;       // 摄像头开启后的预热帧数（丢弃）
 
     private static readonly string BaseDir = AppContext.BaseDirectory;
-    private static readonly string LogPath = Path.Combine(BaseDir, "face.log");
+    private static readonly string LogPath = Path.Combine(BaseDir, "facelock.log");
 
     private readonly List<(string Name, FaceImage Image)> _refImages = new();   // 底库图像（常驻，体积小）
 
@@ -137,6 +137,8 @@ internal sealed class Comparator
             }
 
             var results = new List<bool>();
+            int faceless = 0;        // 处理成功但未检测到人脸的帧数
+            int readFailures = 0;    // 摄像头读帧失败数（设备层故障）
             for (int i = 0; i < FramesPerCycle; i++)
             {
                 if (i > 0)
@@ -145,6 +147,7 @@ internal sealed class Comparator
                 }
                 if (!capture.Read(frame) || frame.IsEmpty)
                 {
+                    readFailures++;
                     Log($"第 {i + 1} 帧读取失败，跳过。");
                     continue;
                 }
@@ -155,6 +158,7 @@ internal sealed class Comparator
                     FaceInfo[] infos = detector.Detect(curr);
                     if (infos.Length == 0)
                     {
+                        faceless++;
                         Log($"第 {i + 1} 帧未检测到人脸。");
                         continue;
                     }
@@ -170,20 +174,31 @@ internal sealed class Comparator
                 }
             }
 
-            if (results.Count == 0)
-            {
-                verdict = "本轮无有效比对帧，跳过判定";
-                Log(verdict);
-            }
-            else if (results.Contains(true))
+            // 判定规则（安全优先）：
+            //   任一帧匹配本人     → 放行
+            //   有人脸但均不匹配   → 陌生人 → 锁屏
+            //   全部帧无人脸       → 人不在场 → 锁屏（防"人走了反而不锁"）
+            //   全部帧读取失败     → 摄像头故障 → 跳过（设备故障不等于未授权）
+            if (results.Contains(true))
             {
                 verdict = "判定：本人，不锁屏";
                 Log($"判定结果：本人（有效 {results.Count} 帧中匹配），不锁屏。");
             }
+            else if (results.Count == 0 && faceless == 0)
+            {
+                verdict = "摄像头读帧全部失败，跳过判定";
+                Log(verdict);
+            }
+            else if (results.Count == 0)
+            {
+                verdict = "判定：无人在场，已锁定工作站";
+                Log("判定结果：未检测到人脸（疑似无人在场），锁定工作站。");
+                Native.LockWorkStation();
+            }
             else
             {
                 verdict = "判定：非本人，已锁定工作站";
-                Log($"判定结果：非本人（{results.Count} 帧均不匹配），锁定工作站。");
+                Log($"判定结果：非本人（{results.Count} 帧有人脸均不匹配），锁定工作站。");
                 Native.LockWorkStation();
             }
             Log($"本轮完成，总耗时 {sw.ElapsedMilliseconds} ms；模型即将释放。");
@@ -220,7 +235,7 @@ internal static class ConsoleWindow
             return;
         }
         Native.AllocConsole();
-        Native.SetConsoleTitle("人脸比对 - 比对进行中...");
+        Native.SetConsoleTitle("FaceLock - 比对进行中...");
         DisableCloseButton();                       // 防止点 × 关掉整个托盘程序
         Console.OutputEncoding = Encoding.UTF8;     // 控制台 CP=65001，中文不再乱码
         var sw = new StreamWriter(Console.OpenStandardOutput(), new UTF8Encoding(false))

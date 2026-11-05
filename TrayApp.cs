@@ -28,14 +28,14 @@ internal sealed class TrayApp : ApplicationContext
         _icon = new NotifyIcon
         {
             Icon = LoadIcon(),
-            Text = $"人脸比对锁屏（每 {Settings.Current.IntervalText}）",
+            Text = $"FaceLock 人脸锁（每 {Settings.Current.IntervalText}）",
             ContextMenuStrip = menu,
             Visible = true,
         };
         string tip = PasswordStore.IsSet
-            ? "已启动，模型加载后开始比对。退出/设置需密码。"
-            : "已启动，模型加载后开始比对。退出/设置首次使用时会提示设置密码。";
-        _icon.ShowBalloonTip(3000, "人脸比对锁屏", tip, ToolTipIcon.Info);
+            ? "FaceLock 已启动，模型加载后开始比对。退出/设置需密码。"
+            : "FaceLock 已启动，模型加载后开始比对。退出/设置首次使用时会提示设置密码。";
+        _icon.ShowBalloonTip(3000, "FaceLock 人脸锁", tip, ToolTipIcon.Info);
 
         // 模型加载 + 首轮比对放后台，避免阻塞托盘消息循环
         Task.Run(() =>
@@ -80,7 +80,7 @@ internal sealed class TrayApp : ApplicationContext
                 return false;
             }
             PasswordStore.Set(create.CapturedPassword!);
-            ShowBalloon("退出密码已设置，之后退出/设置均需输入该密码。");
+            ShowBalloon("操作密码已设置，之后退出/设置均需输入该密码。");
             return true;
         }
         using var verify = new PasswordDialog(PasswordDialog.Mode.Verify, $"请输入密码以{action}：");
@@ -102,7 +102,7 @@ internal sealed class TrayApp : ApplicationContext
         if (create.ShowDialog() == DialogResult.OK)
         {
             PasswordStore.Set(create.CapturedPassword!);
-            ShowBalloon("退出密码已修改。");
+            ShowBalloon("操作密码已修改。");
         }
     }
 
@@ -111,7 +111,7 @@ internal sealed class TrayApp : ApplicationContext
     {
         TimeSpan interval = Settings.Current.Interval;
         _timer?.Change(interval, interval);
-        _icon.Text = $"人脸比对锁屏（每 {Settings.Current.IntervalText}）";
+        _icon.Text = $"FaceLock 人脸锁（每 {Settings.Current.IntervalText}）";
     }
 
     private void RunNow()
@@ -143,14 +143,14 @@ internal sealed class TrayApp : ApplicationContext
     {
         try
         {
-            _icon.ShowBalloonTip(3000, "人脸比对结果", text, ToolTipIcon.Info);
+            _icon.ShowBalloonTip(3000, "FaceLock 比对结果", text, ToolTipIcon.Info);
         }
         catch { }
     }
 
     private static void OpenLog()
     {
-        string path = Path.Combine(AppContext.BaseDirectory, "face.log");
+        string path = Path.Combine(AppContext.BaseDirectory, "facelock.log");
         if (!File.Exists(path))
         {
             File.WriteAllText(path, "");

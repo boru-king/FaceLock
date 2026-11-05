@@ -13,7 +13,7 @@ internal sealed class SettingsForm : Form
 
     internal SettingsForm(Settings s)
     {
-        Text = "设置 - 人脸比对锁屏";
+        Text = "设置 - FaceLock 人脸锁";
         FormBorderStyle = FormBorderStyle.FixedDialog;
         MaximizeBox = false;
         MinimizeBox = false;
