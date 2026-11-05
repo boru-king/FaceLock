@@ -121,24 +121,61 @@ internal sealed class Comparator
                 return verdict;
             }
 
-            using var capture = new VideoCapture(0, VideoCapture.API.Any, Array.Empty<Tuple<CapProp, int>>());
-            using var frame = new Mat();
-            if (!capture.IsOpened)
+#if TESTMODE
+            // 内存泄漏定位实验：放置 memtest.skip 标记文件时，仅做模型加载/释放，跳过摄像头与帧处理
+            if (File.Exists(Path.Combine(BaseDir, "memtest.skip")))
             {
-                verdict = "无法打开摄像头，跳过本轮";
+                verdict = "memtest：仅模型加载/释放";
                 Log(verdict);
                 return verdict;
             }
+#endif
 
-            // 预热：丢弃开头几帧（改善冷启动画面质量）
-            for (int w = 0; w < WarmupFrames; w++)
-            {
-                capture.Read(frame);
-            }
-
+            // DirectShow 后端优先：MSMF 后端反复开关会泄漏内存（实测 +16MB/轮），DShow 实测零泄漏
             var results = new List<bool>();
             int faceless = 0;        // 处理成功但未检测到人脸的帧数
             int readFailures = 0;    // 摄像头读帧失败数（设备层故障）
+            VideoCapture? capture = null;
+            try
+            {
+                capture = new VideoCapture(0, VideoCapture.API.DShow, Array.Empty<Tuple<CapProp, int>>());
+                if (!capture.IsOpened)
+                {
+                    capture.Dispose();
+                    capture = new VideoCapture(0, VideoCapture.API.Any, Array.Empty<Tuple<CapProp, int>>());
+                    if (!capture.IsOpened)
+                    {
+                        verdict = "无法打开摄像头，跳过本轮";
+                        Log(verdict);
+                        return verdict;
+                    }
+                    Log("警告：DirectShow 后端不可用，本轮使用备用后端（频繁开关可能累积内存）。");
+                }
+
+                using var frame = new Mat();
+                // 预热：丢弃开头几帧（改善冷启动画面质量）
+                for (int w = 0; w < WarmupFrames; w++)
+                {
+                    capture.Read(frame);
+                }
+
+#if TESTMODE
+                // 内存泄漏定位实验（二）：放置 memtest.camera 时，仅开关摄像头并读帧，跳过图像转换
+                if (File.Exists(Path.Combine(BaseDir, "memtest.camera")))
+                {
+                    for (int i = 0; i < FramesPerCycle; i++)
+                    {
+                        if (i > 0)
+                        {
+                            Thread.Sleep(1500);
+                        }
+                        capture.Read(frame);
+                    }
+                    verdict = "memtest：仅摄像头开关与读帧";
+                    Log(verdict);
+                    return verdict;
+                }
+#endif
             for (int i = 0; i < FramesPerCycle; i++)
             {
                 if (i > 0)
@@ -153,25 +190,41 @@ internal sealed class Comparator
                 }
                 try
                 {
-                    using SKBitmap bmp = SKBitmap.Decode(frame.ToImage<Bgr, byte>().ToJpegData(100))!;
+                    using SKBitmap bmp = SKBitmap.Decode(MatToJpeg(frame))!;
                     FaceImage curr = bmp.ToFaceImage();
-                    FaceInfo[] infos = detector.Detect(curr);
-                    if (infos.Length == 0)
+                    try
                     {
-                        faceless++;
-                        Log($"第 {i + 1} 帧未检测到人脸。");
-                        continue;
+                        FaceInfo[] infos = detector.Detect(curr);
+                        if (infos.Length == 0)
+                        {
+                            faceless++;
+                            Log($"第 {i + 1} 帧未检测到人脸。");
+                        }
+                        else
+                        {
+                            FaceMarkPoint[] pts = landmarker.Mark(curr, infos[0]);
+                            float[] data = recognizer.Extract(curr, pts);
+                            bool isSelf = refFeatures.Any(r => recognizer.IsSelf(r, data));
+                            results.Add(isSelf);
+                            Log($"第 {i + 1} 帧比对：{isSelf}");
+                        }
                     }
-                    FaceMarkPoint[] pts = landmarker.Mark(curr, infos[0]);
-                    float[] data = recognizer.Extract(curr, pts);
-                    bool isSelf = refFeatures.Any(r => recognizer.IsSelf(r, data));
-                    results.Add(isSelf);
-                    Log($"第 {i + 1} 帧比对：{isSelf}");
+                    finally
+                    {
+                        // 关键：FaceImage 内部为 AllocHGlobal 非托管缓冲，struct 无终结器，
+                        // 必须显式 Dispose，否则每帧泄漏一整幅图像的内存（约 6MB @1080p）
+                        curr.Dispose();
+                    }
                 }
                 catch (Exception ex)
                 {
                     Log($"第 {i + 1} 帧处理出错：{ex.Message}");
                 }
+                }
+            }
+            finally
+            {
+                capture?.Dispose();   // 无论成败均释放摄像头会话
             }
 
             // 判定规则（安全优先）：
@@ -210,7 +263,12 @@ internal sealed class Comparator
         }
         finally
         {
-            // 摄像头/模型随 using 释放；若显示了控制台，停留片刻便于查看后关闭
+            // 摄像头/模型随 using 释放；强制回收终结器队列，避免临时图像对象堆积
+            // （Emgu Image 等持有非托管内存的对象依赖终结器，无 GC 压力时会延迟回收）
+            GC.Collect();
+            GC.WaitForPendingFinalizers();
+            GC.Collect();
+            // 若显示了控制台，停留片刻便于查看后关闭
             if (showWindow)
             {
                 Thread.Sleep(1500);
@@ -218,6 +276,13 @@ internal sealed class Comparator
             }
         }
         return verdict;
+    }
+
+    /// <summary>帧 → JPEG 字节（临时 Emgu 图像显式释放，防非托管内存堆积）。</summary>
+    private static byte[] MatToJpeg(Mat frame)
+    {
+        using var img = frame.ToImage<Bgr, byte>();
+        return img.ToJpegData(100);
     }
 }
 

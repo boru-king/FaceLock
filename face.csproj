@@ -10,9 +10,9 @@
     <ApplicationIcon>tray.ico</ApplicationIcon>
     <AssemblyName>FaceLock</AssemblyName>
     <RootNamespace>FaceLock</RootNamespace>
-    <Version>1.6.1</Version>
-    <AssemblyVersion>1.6.1.0</AssemblyVersion>
-    <FileVersion>1.6.1.0</FileVersion>
+    <Version>1.6.2</Version>
+    <AssemblyVersion>1.6.2.0</AssemblyVersion>
+    <FileVersion>1.6.2.0</FileVersion>
     <Company>FaceLock</Company>
     <Product>FaceLock</Product>
     <AssemblyTitle>FaceLock</AssemblyTitle>

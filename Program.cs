@@ -28,9 +28,9 @@ internal static class Program
         AntiKill.Protect();
 
 #if TESTMODE
-        // 仅测试构建：30 秒后自动退出，便于自动化验证（正式包不含此代码）
-        Comparator.Log("TESTMODE：30 秒后自动退出。");
-        new System.Threading.Timer(_ => Environment.Exit(0), null, 30_000, Timeout.Infinite);
+        // 仅测试构建：150 秒后自动退出，便于自动化验证内存趋势（正式包不含此代码）
+        Comparator.Log("TESTMODE：150 秒后自动退出。");
+        new System.Threading.Timer(_ => Environment.Exit(0), null, 150_000, Timeout.Infinite);
 #endif
 
         Application.Run(new TrayApp());
