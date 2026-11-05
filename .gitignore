@@ -24,6 +24,8 @@ Desktop.ini
 ## 本项目特有
 # 构建发布输出（可由 dotnet publish 再生，勿入库）
 release/
+release-test/
+release-*/
 # 完整未分卷 zip（分卷才入库；本地保留供 GitHub Releases 附件上传）
 dist/FaceLock-v1.6.0-win-x64.zip
 # 运行时需要的目标人脸照片（含生物特征，禁止入库）
