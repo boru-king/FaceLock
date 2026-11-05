@@ -1,0 +1,40 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- WinExe：无常驻控制台窗口；比对时按需 AllocConsole 弹出 -->
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <ApplicationIcon>tray.ico</ApplicationIcon>
+    <AssemblyName>face</AssemblyName>
+    <RootNamespace>face</RootNamespace>
+    <Version>1.5.0</Version>
+    <AssemblyVersion>1.5.0.0</AssemblyVersion>
+    <FileVersion>1.5.0.0</FileVersion>
+    <Company>face</Company>
+    <Product>face</Product>
+    <AssemblyTitle>face</AssemblyTitle>
+    <!-- 构建路径中性化：PDB/调试信息中不出现本机目录 -->
+    <PathMap>D:\aiface=C:\src</PathMap>
+  </PropertyGroup>
+
+  <!-- 托盘图标同时内嵌为资源（运行时加载） -->
+  <ItemGroup>
+    <EmbeddedResource Include="tray.ico" />
+  </ItemGroup>
+
+  <!-- NuGet 依赖版本取自原 face.exe 内嵌 deps.json（精确锁定） -->
+  <ItemGroup>
+    <PackageReference Include="Emgu.CV" Version="4.9.0.5494" />
+    <PackageReference Include="Emgu.CV.runtime.windows" Version="4.9.0.5494" />
+    <PackageReference Include="SkiaSharp" Version="2.88.3" />
+    <PackageReference Include="SkiaSharp.NativeAssets.Win32" Version="2.88.3" />
+    <PackageReference Include="ViewFaceCore" Version="0.4.0-alpha4" />
+    <PackageReference Include="ViewFaceCore.Extension.SkiaSharp" Version="0.4.0-alpha4" />
+    <PackageReference Include="ViewFaceCore.all_models" Version="6.0.7" />
+    <PackageReference Include="ViewFaceCore.runtime.win.x64" Version="6.0.8-alpha4" />
+  </ItemGroup>
+
+</Project>

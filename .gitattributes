@@ -1,0 +1,16 @@
+# 统一换行符：文本自动规范化，按平台检出
+* text=auto
+
+*.cs        text diff=csharp
+*.csproj    text
+*.md        text
+*.gitignore text
+*.gitattributes text
+
+# 二进制
+*.png   binary
+*.jpg   binary
+*.dll   binary
+*.exe   binary
+*.pdb   binary
+*.csta  binary
