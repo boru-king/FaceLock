@@ -168,7 +168,26 @@ internal sealed class TrayApp : ApplicationContext
 
     private static Icon LoadIcon()
     {
-        Stream? s = Assembly.GetExecutingAssembly().GetManifestResourceStream("face.tray.ico");
-        return s is not null ? new Icon(s) : SystemIcons.Application;
+        try
+        {
+            var asm = Assembly.GetExecutingAssembly();
+            // 优先按固定名取（csproj 中 LogicalName="tray.ico"，与命名空间解耦）
+            Stream? s = asm.GetManifestResourceStream("tray.ico");
+            if (s is null)
+            {
+                // 兜底：按后缀扫描（防止命名空间变更导致资源名不匹配）
+                string? name = asm.GetManifestResourceNames().FirstOrDefault(n => n.EndsWith("tray.ico", StringComparison.OrdinalIgnoreCase));
+                if (name is not null)
+                {
+                    s = asm.GetManifestResourceStream(name);
+                }
+            }
+            if (s is not null)
+            {
+                return new Icon(s);
+            }
+        }
+        catch { }
+        return SystemIcons.Application;
     }
 }

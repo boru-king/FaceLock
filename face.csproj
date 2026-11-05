@@ -10,9 +10,9 @@
     <ApplicationIcon>tray.ico</ApplicationIcon>
     <AssemblyName>FaceLock</AssemblyName>
     <RootNamespace>FaceLock</RootNamespace>
-    <Version>1.6.0</Version>
-    <AssemblyVersion>1.6.0.0</AssemblyVersion>
-    <FileVersion>1.6.0.0</FileVersion>
+    <Version>1.6.1</Version>
+    <AssemblyVersion>1.6.1.0</AssemblyVersion>
+    <FileVersion>1.6.1.0</FileVersion>
     <Company>FaceLock</Company>
     <Product>FaceLock</Product>
     <AssemblyTitle>FaceLock</AssemblyTitle>
@@ -20,9 +20,9 @@
     <PathMap>D:\aiface=C:\src</PathMap>
   </PropertyGroup>
 
-  <!-- 托盘图标同时内嵌为资源（运行时加载） -->
+  <!-- 托盘图标同时内嵌为资源（LogicalName 固定，与命名空间解耦） -->
   <ItemGroup>
-    <EmbeddedResource Include="tray.ico" />
+    <EmbeddedResource Include="tray.ico" LogicalName="tray.ico" />
   </ItemGroup>
 
   <!-- NuGet 依赖版本取自原 face.exe 内嵌 deps.json（精确锁定） -->
