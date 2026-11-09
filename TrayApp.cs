@@ -1,13 +1,17 @@
 // TrayApp.cs —— 任务栏托盘常驻：图标、右键菜单、定时调度、气泡提示
+// 锁屏感知：锁屏（自动或手动）时暂停比对与摄像头检测，解锁后自动恢复。
 using System.Diagnostics;
 using System.Reflection;
+using Microsoft.Win32;
 
 internal sealed class TrayApp : ApplicationContext
 {
     private readonly NotifyIcon _icon;
     private readonly Comparator _comparator = new();
     private System.Threading.Timer? _timer;
-    private int _running;   // 0=空闲 1=比对进行中（防重入）
+    private int _running;            // 0=空闲 1=比对进行中（防重入）
+    private volatile bool _paused;   // 锁屏期间暂停检测
+    private System.Threading.Timer? _unlockCheckTimer;   // 持有引用防被 GC（一次性补比对）
 
     internal TrayApp()
     {
@@ -37,6 +41,9 @@ internal sealed class TrayApp : ApplicationContext
             : "FaceLock 已启动，模型加载后开始比对。退出/设置首次使用时会提示设置密码。";
         _icon.ShowBalloonTip(3000, "FaceLock 人脸锁", tip, ToolTipIcon.Info);
 
+        // 锁屏/解锁感知（覆盖自动锁屏与手动 Win+L）
+        SystemEvents.SessionSwitch += OnSessionSwitch;
+
         // 模型加载 + 首轮比对放后台，避免阻塞托盘消息循环
         Task.Run(() =>
         {
@@ -56,6 +63,44 @@ internal sealed class TrayApp : ApplicationContext
             TimeSpan interval = Settings.Current.Interval;
             _timer = new System.Threading.Timer(_ => RunNow(), null, interval, interval);
         });
+
+#if TESTMODE
+        // 测试专用：模拟锁屏/解锁，验证暂停-恢复逻辑（正式包不含）
+        _simLockTimer = new System.Threading.Timer(_ =>
+        {
+            _paused = true;
+            Comparator.Log("TESTMODE 模拟锁屏：暂停检测。");
+        }, null, 55_000, Timeout.Infinite);
+        _simUnlockTimer = new System.Threading.Timer(_ =>
+        {
+            _paused = false;
+            Comparator.Log("TESTMODE 模拟解锁：恢复检测。");
+        }, null, 80_000, Timeout.Infinite);
+#endif
+    }
+
+#if TESTMODE
+    private System.Threading.Timer? _simLockTimer;     // 持有引用防被 GC
+    private System.Threading.Timer? _simUnlockTimer;
+#endif
+
+    /// <summary>锁屏 → 暂停检测；解锁 → 恢复检测并稍后补一次比对。</summary>
+    private void OnSessionSwitch(object sender, SessionSwitchEventArgs e)
+    {
+        if (e.Reason == SessionSwitchReason.SessionLock)
+        {
+            _paused = true;
+            Comparator.Log("检测暂停：电脑已锁屏（自动或手动），解锁后自动恢复。");
+        }
+        else if (e.Reason == SessionSwitchReason.SessionUnlock)
+        {
+            _paused = false;
+            Comparator.Log("检测恢复：电脑已解锁。");
+            // 解锁后稍候补一次比对（确认在用电脑的是本人；非本人会再次锁屏）
+            // 注意：定时器须持有引用，否则可能被 GC 提前回收导致回调不执行
+            _unlockCheckTimer?.Dispose();
+            _unlockCheckTimer = new System.Threading.Timer(_ => RunNow(), null, 10_000, Timeout.Infinite);
+        }
     }
 
     /// <summary>打开设置对话框；保存后按新间隔重排定时器。</summary>
@@ -116,6 +161,10 @@ internal sealed class TrayApp : ApplicationContext
 
     private void RunNow()
     {
+        if (_paused)
+        {
+            return;   // 锁屏期间暂停检测
+        }
         if (Interlocked.Exchange(ref _running, 1) == 1)
         {
             return;   // 上一轮还没跑完，跳过
@@ -160,6 +209,7 @@ internal sealed class TrayApp : ApplicationContext
 
     private void ExitApp()
     {
+        SystemEvents.SessionSwitch -= OnSessionSwitch;
         _timer?.Dispose();
         _icon.Visible = false;
         _icon.Dispose();
